@@ -25,7 +25,7 @@ An intelligent property search API that uses **Vector Search (Qdrant)** and **Hy
 ### 2. Installation
 1. Clone the repository:
    ```bash
-   git clone <repo_url>
+   git clone https://github.com/rag/property-search-ai.git
    cd property-search-ai
    ```
 
