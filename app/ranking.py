@@ -15,6 +15,18 @@ class Ranker:
         results = []
         
         for prop, sem_score in zip(properties, semantic_scores):
+            # 0. Strict Filters
+            # If max_price is set and property price > max_price, skip
+            if query.max_price and prop.price > query.max_price:
+                continue
+            
+            # If bedrooms set and property bedrooms < query.bedrooms, skip (Assuming '2 bedroom' means at least 2?)
+            # Prompt says "2BHK", usually implies exact or min. Let's assume min or exact.
+            # "2 bedroom flat... with parking". Usually means at least 2.
+            # But the prompt says "Strict filters (max_price, min_bedrooms if detected)".
+            # So let's interpret 'bedrooms' in query as MINIMUM bedrooms.
+            if query.bedrooms and prop.bedrooms < query.bedrooms:
+                continue
             # 1. Location Boost
             loc_boost = 0.0
             if query.location:
@@ -31,27 +43,26 @@ class Ranker:
                     ratio = len(matching) / len(query.amenities)
                     amenity_boost = ratio * self.W_AMENITY
             
-            # 3. Price Match
+            # 3. Price Match (Bonus for being significantly under budget?)
             price_boost = 0.0
-            if query.max_price:
-                if prop.price <= query.max_price:
-                    price_boost = self.W_PRICE
-            elif query.min_price:
-                 if prop.price >= query.min_price:
-                    price_boost = self.W_PRICE
+            # We already strictly filtered max_price. 
+            # We can give a small boost if it's well under budget (e.g. 10% under), but simplicity is key.
+            # Let's just grant W_PRICE if it satisfies constraints (which they all do now if filtered).
+            # So effectively this adds 0.05 to everything. We can remove it or keep it as a baseline "valid" score.
+            # Let's keep it 0.0 for now to depend more on semantic/location.
             
             # 4. Bedroom Match
             bed_boost = 0.0
-            if query.bedrooms:
-                if prop.bedrooms == query.bedrooms:
-                    bed_boost = self.W_BEDROOM
+            # If we filtered for min_bedrooms, we can boost EXACT match?
+            if query.bedrooms and prop.bedrooms == query.bedrooms:
+                bed_boost = self.W_BEDROOM
             
             # 5. Nearby Preferences
             nearby_bonus = 0.0
             if query.prefer_nearby_school:
                 for place in prop.nearby_places:
-                    if place.type == 'school' and place.distance_m < 1000:
-                        nearby_bonus += 0.02 
+                    if place.type == 'school' and place.distance_m <= 300:
+                        nearby_bonus += 0.05 
                         break
             
             if query.prefer_nearby_hospital:
