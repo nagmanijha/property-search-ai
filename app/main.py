@@ -68,6 +68,8 @@ async def search_properties(query_text: str):
     semantic_scores: List[float] = []
     
     for hit in search_result:
+        # payload is a dict, we convert to Property
+        # Qdrant payload comes back as dict
         try:
             prop = Property(**hit.payload)
             properties.append(prop)
@@ -80,6 +82,7 @@ async def search_properties(query_text: str):
     ranked_results = app_state.ranker.rank(properties, semantic_scores, parsed_query)
     
     # 6. Return Response
+    # Return top 20 maybe? Prompt says we return results with explanations.
     return SearchResponse(
         results=ranked_results[:20],
         parsed_query=parsed_query
